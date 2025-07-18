@@ -88,7 +88,7 @@ git --version
 ### 2. Clonar el Repositorio
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/nastacuazp/proyecto_final_scm.git
 cd dyzen
 ```
 
@@ -217,7 +217,7 @@ graph TD
     H --> I[Subida al servidor]
     I --> J[Almacenamiento en BD]
     J --> K[Feed de imágenes]
-    K --> L{Usuario solicita mejora?}
+    K --> L{¿Usuario solicita mejora?}
     L -->|Sí| M[ESPCN en servidor]
     L -->|No| N[Visualización normal]
     M --> O[Imagen mejorada]
@@ -236,7 +236,7 @@ graph LR
     G --> H[Validación super-resolución]
     H --> I[Exportación TorchScript]
     I --> J[Conversión ONNX]
-    J --> K[Deployment web]
+    J --> K[Despliegue web]
 ```
 
 ## 🧠 Modelos de IA
@@ -496,15 +496,6 @@ GET /api/models/status
 # Actualizar condiciones de red
 POST /api/network/update
 ```
-
-## 🔒 Consideraciones de Seguridad
-
-- **Validación de Archivos**: Solo imágenes permitidas
-- **Límite de Tamaño**: Máximo 10MB por imagen
-- **Sanitización**: Escape de contenido usuario
-- **Rate Limiting**: Implementar en producción
-- **HTTPS**: Requerido para funciones de red precisas
-
 
 ## 👥 Equipo de Desarrollo
 
