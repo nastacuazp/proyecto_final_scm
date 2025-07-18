@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "converted_at": "2024-01-15",
+  "total_models": 4,
+  "models": {
+    "autoencoders": {
+      "8": {
+        "file": "autoencoder_b8.onnx",
+        "compression": "high",
+        "quality": "low",
+        "use_case": "slow_networks"
+      },
+      "16": {
+        "file": "autoencoder_b16.onnx",
+        "compression": "medium",
+        "quality": "medium",
+        "use_case": "normal_networks"
+      },
+      "32": {
+        "file": "autoencoder_b32.onnx",
+        "compression": "low",
+        "quality": "high",
+        "use_case": "fast_networks"
+      }
+    },
+    "enhancement": {
+      "espcn": {
+        "file": "espcn_model.onnx",
+        "type": "super_resolution",
+        "use_case": "image_enhancement"
+      }
+    }
+  },
+  "input_shape": [
+    1,
+    3,
+    1024,
+    768
+  ],
+  "output_shape": [
+    1,
+    3,
+    1024,
+    768
+  ],
+  "format": "ONNX",
+  "opset_version": 11
+}

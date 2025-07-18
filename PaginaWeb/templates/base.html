@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dyzen - Compresión Adaptativa{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/client_processing.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="nav">
+                <div class="logo">
+                    <a href="{{ url_for('index') }}">
+                        <i class="fas fa-images"></i>
+                        Dyzen
+                    </a>
+                </div>
+                
+                <div class="nav-links">
+                    <a href="{{ url_for('index') }}" class="nav-link">
+                        <i class="fas fa-home"></i> Inicio
+                    </a>
+                    <a href="{{ url_for('submit') }}" class="nav-link submit-btn">
+                        <i class="fas fa-plus"></i> Subir Imagen
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Network Status Bar -->
+    <div class="network-status" id="networkStatus">
+        <div class="container">
+            <div class="network-info">
+                <span class="network-indicator" id="networkIndicator">
+                    <i class="fas fa-wifi"></i>
+                </span>
+                <span id="networkText">Detectando red...</span>
+                <span class="compression-info" id="compressionInfo">
+                    Compresión: <strong id="compressionLevel">16</strong> bits
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>Dyzen - Sistema de Compresión Adaptativa | Desarrollado por Grupo 1 - SCM</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/network_speed.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

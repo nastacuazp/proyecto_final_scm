@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="reddit-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-card">
+            <h3><i class="fas fa-chart-line"></i> Estadísticas de Red</h3>
+            <div class="network-stats">
+                <div class="stat">
+                    <span class="stat-label">Ancho de Banda:</span>
+                    <span class="stat-value" id="bandwidthValue">{{ "%.1f"|format(network.bandwidth) }} Mbps</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Latencia:</span>
+                    <span class="stat-value" id="latencyValue">{{ "%.0f"|format(network.latency) }} ms</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Calidad:</span>
+                    <span class="stat-value quality-{{ network.quality }}" id="qualityValue">
+                        {{ network.quality.title() }}
+                    </span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Próxima prueba:</span>
+                    <span class="stat-value" id="nextTestValue">30s</span>
+                </div>
+            </div>
+            <button class="btn btn-secondary btn-sm mt-2" onclick="window.DyzenDebug.runSpeedTest()">
+                <i class="fas fa-tachometer-alt"></i> Ejecutar prueba ahora
+            </button>
+        </div>
+
+        <div class="sidebar-card">
+            <h3><i class="fas fa-info-circle"></i> Compresión Adaptativa</h3>
+            <p>Se ajusta automáticamente la compresión según las condiciones de red:</p>
+            <ul class="compression-levels">
+                <li><strong>8 bits:</strong> Red lenta/móvil</li>
+                <li><strong>16 bits:</strong> Red normal</li>
+                <li><strong>32 bits:</strong> Red rápida</li>
+            </ul>
+        </div>
+    </aside>
+
+    <!-- Posts Feed -->
+    <div class="posts-feed">
+        {% if posts %}
+            {% for post in posts %}
+            <article class="post-card" data-post-id="{{ post.id }}">
+                <!-- Post Header -->
+                <div class="post-header">
+                    <div class="post-meta">
+                        <span class="subreddit">r/{{ post.subreddit }}</span>
+                        <span class="separator">•</span>
+                        <span class="username">u/{{ post.username }}</span>
+                        <span class="separator">•</span>
+                        <span class="timestamp">{{ post.created_at }}</span>
+                    </div>
+                </div>
+
+                <!-- Post Title -->
+                <h2 class="post-title">
+                    <a href="{{ url_for('view_post', post_id=post.id) }}">{{ post.title }}</a>
+                </h2>
+
+                <!-- Post Image Container -->
+                <div class="post-image-container">
+                    <a href="{{ url_for('view_post', post_id=post.id) }}" class="image-link">
+                        <div class="post-image-wrapper">
+                            <img src="{{ url_for('static', filename=post.display_path.replace('static/', '').replace('\\', '/')) }}" 
+                                 alt="{{ post.title }}"
+                                 class="post-image"
+                                 loading="lazy">
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Post Actions -->
+                <div class="post-actions">
+                    <div class="vote-buttons">
+                        <button class="vote-btn upvote" onclick="vote({{ post.id }}, 'up', 'post')">
+                            <i class="fas fa-arrow-up"></i>
+                            <span class="vote-count upvote-count">{{ post.upvotes }}</span>
+                        </button>
+                        <button class="vote-btn downvote" onclick="vote({{ post.id }}, 'down', 'post')">
+                            <i class="fas fa-arrow-down"></i>
+                            <span class="vote-count downvote-count">{{ post.downvotes }}</span>
+                        </button>
+                    </div>
+
+                    <div class="action-buttons">
+                        <a href="{{ url_for('view_post', post_id=post.id) }}" class="action-btn">
+                            <i class="fas fa-comment"></i>
+                            {{ post.comment_count }} comentarios
+                        </a>
+                        <!-- <button class="action-btn" onclick="sharePost({{ post.id }})">
+                            <i class="fas fa-share"></i>
+                            Compartir
+                        </button> -->
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-images"></i>
+                <h3>No hay posts aún</h3>
+                <a href="{{ url_for('submit') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Subir Primera Imagen
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Contador para la próxima prueba
+let nextTestCountdown = 30;
+const nextTestElement = document.getElementById('nextTestValue');
+
+function updateCountdown() {
+    if (nextTestElement) {
+        nextTestElement.textContent = `${nextTestCountdown}s`;
+        nextTestCountdown--;
+        
+        if (nextTestCountdown < 0) {
+            nextTestCountdown = 30;
+        }
+    }
+}
+
+// Actualizar el contador cada segundo
+setInterval(updateCountdown, 1000);
+
+// Iniciar el contador
+updateCountdown();
+</script>
+{% endblock %}

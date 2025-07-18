@@ -1,0 +1,143 @@
+/* Estilos para estado de modelos ONNX */
+
+.model-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.model-check {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--background-color);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.model-label {
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.model-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-success {
+  color: var(--success-color);
+}
+
+.status-error {
+  color: var(--error-color);
+}
+
+.status-warning {
+  color: var(--warning-color);
+}
+
+/* Indicadores de modelo en posts */
+.model-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--primary-very-light);
+  color: var(--primary-dark);
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 8px;
+}
+
+.model-indicator.onnx {
+  background: var(--secondary-color);
+  color: white;
+}
+
+.model-indicator.espcn {
+  background: var(--success-color);
+  color: white;
+}
+
+.model-indicator.autoencoder {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Información del modelo en el procesamiento */
+.model-info {
+  margin-top: 12px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.model-info small {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+}
+
+/* Estados de carga de modelos */
+.model-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning-color);
+}
+
+.model-loading::before {
+  content: "⏳";
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Tooltips para información de modelos */
+.model-tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.model-tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-color);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .model-status {
+    grid-template-columns: 1fr;
+  }
+
+  .model-check {
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+}

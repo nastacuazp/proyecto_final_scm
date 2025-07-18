@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+
+{% block title %}Subir Imagen - Dyzen{% endblock %}
+
+{% block content %}
+<div class="submit-page">
+    <div class="submit-container">
+        <div class="submit-header">
+            <h1><i class="fas fa-cloud-upload-alt"></i> Subir Nueva Imagen</h1>
+            <p>Comparte tu imagen con la comunidad.</p>
+        </div>
+
+        <!-- Model Status Card -->
+        <div class="network-card">
+            <h3><i class="fas fa-brain"></i> Estado de Modelos IA</h3>
+            <div class="model-status" id="modelStatus">
+                <div class="model-check">
+                    <span class="model-label">ONNX.js:</span>
+                    <span class="model-value" id="onnxStatus">Verificando...</span>
+                </div>
+                <div class="model-check">
+                    <span class="model-label">Autoencoders:</span>
+                    <span class="model-value" id="autoencodersStatus">Verificando...</span>
+                </div>
+                <div class="model-check">
+                    <span class="model-label">ESPCN:</span>
+                    <span class="model-value" id="espcnStatus">Verificando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Status Card -->
+        <div class="network-card">
+            <h3><i class="fas fa-wifi"></i> Estado de Red Actual</h3>
+            <div class="network-details">
+                <div class="network-metric">
+                    <span class="metric-label">Calidad de Red:</span>
+                    <span class="metric-value quality-{{ network.quality }}">{{ network.quality.title() }}</span>
+                </div>
+                <div class="network-metric">
+                    <span class="metric-label">Compresión Recomendada:</span>
+                    <span class="metric-value">{{ network.compression }} bits</span>
+                </div>
+                <div class="network-metric">
+                    <span class="metric-label">Ancho de Banda:</span>
+                    <span class="metric-value">{{ "%.1f"|format(network.bandwidth) }} Mbps</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing Status -->
+        <div class="processing-status" id="processingStatus" style="display: none;">
+            <div class="processing-content">
+                <div class="processing-spinner"></div>
+                <h3>Ejecutando modelos IA en tu dispositivo...</h3>
+                <p id="processingStep">Preparando...</p>
+                <div class="processing-progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="model-info" id="modelInfo">
+                    <small>Aplicando modelo de compresión...</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Form -->
+        <form class="submit-form" method="POST" enctype="multipart/form-data" id="uploadForm">
+            <div class="form-group">
+                <label for="title">Título del Post</label>
+                <input type="text" id="title" name="title" required placeholder="Escribe un título descriptivo...">
+            </div>
+
+            <div class="form-group">
+                <label for="subreddit">Subtopic</label>
+                <select id="subreddit" name="subreddit">
+                    <option value="pics">r/pics</option>
+                    <option value="photography">r/photography</option>
+                    <option value="art">r/art</option>
+                    <option value="nature">r/nature</option>
+                    <option value="funny">r/funny</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="compression_mode">Modelo de Compresión</label>
+                <select id="compression_mode" name="compression_mode" onchange="updateCompressionInfo()">
+                    <option value="auto">Automático (Recomendado)</option>
+                    <option value="none">Sin comprimir</option>
+                    <option value="8">Autoencoder 8 bits (alta compresión)</option>
+                    <option value="16">Autoencoder 16 bits (compresión media)</option>
+                    <option value="32">Autoencoder 32 bits (baja compresión)</option>
+                </select>
+                <small class="compression-description" id="compressionDescription">
+                    Los modelos autoencoder comprimen la imagen basándose en la calidad de la red
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Nombre de Usuario</label>
+                <input type="text" id="username" name="username" placeholder="Anónimo" value="Anónimo">
+            </div>
+
+            <div class="form-group">
+                <label for="enhancement_mode">Mejora con ESPCN</label>
+                <select id="enhancement_mode" name="enhancement_mode">
+                    <option value="none">Sin mejora</option>
+                    <option value="espcn">Aplicar ESPCN (Super-resolución)</option>
+                </select>
+                <small class="compression-description">
+                    El modelo ESPCN mejora la calidad visual usando IA local
+                </small>
+            </div>
+
+            <!-- Image Upload Area -->
+            <div class="form-group">
+                <label>Imagen</label>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <h3>Arrastra tu imagen aquí</h3>
+                        <p>o haz clic para seleccionar</p>
+                        <p class="upload-info">Formatos: JPG, PNG, WebP (máx. 10MB)</p>
+                        <p class="upload-info">
+                            <i class="fas fa-brain"></i>
+                            Procesamiento de IA
+                        </p>
+                    </div>
+                    <input type="file" id="image" name="image" accept="image/*" required>
+                </div>
+            </div>
+
+            <!-- Image Preview -->
+            <div class="image-preview" id="imagePreview" style="display: none;">
+                <h4>Vista Previa y Procesamiento IA</h4>
+                <div class="preview-container">
+                    <div class="preview-images">
+                        <div class="preview-item">
+                            <h5>Original</h5>
+                            <img id="originalImage" alt="Original">
+                            <p id="originalInfo">-</p>
+                        </div>
+                        <div class="preview-item">
+                            <h5>Procesada con IA</h5>
+                            <img id="processedImage" alt="Procesada">
+                            <p id="processedInfo">-</p>
+                        </div>
+                    </div>
+                    <div class="preview-info">
+                        <div class="info-item">
+                            <span class="info-label">Tamaño Original:</span>
+                            <span id="originalSize">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tamaño Procesado:</span>
+                            <span id="processedSize">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Reducción:</span>
+                            <span id="compressionReduction">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Modelo Usado:</span>
+                            <span id="modelUsed">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Mejora ESPCN:</span>
+                            <span id="espcnApplied">No aplicada</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden inputs for processed data -->
+            <input type="hidden" id="processedImageData" name="processed_image_data">
+            <input type="hidden" id="thumbnailData" name="thumbnail_data">
+            <input type="hidden" id="processingMetadata" name="processing_metadata">
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="history.back()">
+                    <i class="fas fa-arrow-left"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-secondary" id="reprocessBtn" style="display: none;"
+                    onclick="reprocessImage()">
+                    <i class="fas fa-redo"></i> Reprocesar
+                </button>
+                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                    <i class="fas fa-paper-plane"></i> Publicar Imagen
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Cargar ONNX.js -->
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort.min.js"></script>
+<script src="{{ url_for('static', filename='js/onnx_image_processor.js') }}"></script>
+<script>
+    let currentFile = null;
+    let processedData = null;
+    let modelAvailability = null;
+
+    // Elementos del DOM
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('image');
+    const imagePreview = document.getElementById('imagePreview');
+    const submitBtn = document.getElementById('submitBtn');
+    const reprocessBtn = document.getElementById('reprocessBtn');
+    const processingStatus = document.getElementById('processingStatus');
+
+    // Inicializar al cargar la página
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('🚀 Inicializando sistema de procesamiento ONNX...');
+
+        // Verificar disponibilidad de modelos
+        await checkModelAvailability();
+
+        // Configurar eventos
+        setupEventListeners();
+    });
+
+    async function checkModelAvailability() {
+        try {
+            modelAvailability = await onnxProcessor.checkModelAvailability();
+            updateModelStatusUI();
+        } catch (error) {
+            console.error('Error verificando modelos:', error);
+            updateModelStatusUI(false);
+        }
+    }
+
+    function updateModelStatusUI(available = null) {
+        const onnxStatus = document.getElementById('onnxStatus');
+        const autoencodersStatus = document.getElementById('autoencodersStatus');
+        const espcnStatus = document.getElementById('espcnStatus');
+
+        if (available === false || !modelAvailability) {
+            onnxStatus.innerHTML = '<span class="status-error">❌ No disponible</span>';
+            autoencodersStatus.innerHTML = '<span class="status-error">❌ No disponibles</span>';
+            espcnStatus.innerHTML = '<span class="status-error">❌ No disponible</span>';
+            return;
+        }
+
+        // ONNX.js
+        onnxStatus.innerHTML = modelAvailability.onnxSupported ?
+            '<span class="status-success">✅ Disponible</span>' :
+            '<span class="status-error">❌ No disponible</span>';
+
+        // Autoencoders
+        const availableEncoders = Object.values(modelAvailability.autoencoders).filter(Boolean).length;
+        autoencodersStatus.innerHTML = availableEncoders > 0 ?
+            `<span class="status-success">✅ ${availableEncoders}/3 disponibles</span>` :
+            '<span class="status-error">❌ No disponibles</span>';
+
+        // ESPCN
+        espcnStatus.innerHTML = modelAvailability.espcn ?
+            '<span class="status-success">✅ Disponible</span>' :
+            '<span class="status-error">❌ No disponible</span>';
+    }
+
+    function setupEventListeners() {
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Formulario
+        document.getElementById('uploadForm').addEventListener('submit', handleFormSubmit);
+    }
+
+    async function handleFileSelect(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor selecciona un archivo de imagen válido.');
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) { // 10MB
+            alert('El archivo es demasiado grande. Máximo 10MB.');
+            return;
+        }
+
+        currentFile = file;
+
+        // Mostrar imagen original
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('originalImage').src = e.target.result;
+            document.getElementById('originalSize').textContent = formatFileSize(file.size);
+            document.getElementById('originalInfo').textContent = `${file.name}`;
+            imagePreview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        // Procesar imagen con modelos ONNX
+        await processImageWithONNX();
+    }
+
+    async function processImageWithONNX() {
+        if (!currentFile) return;
+
+        try {
+            showProcessingStatus(true);
+            updateProcessingStep('Verificando modelos ONNX...', 5);
+
+            // Verificar que los modelos estén disponibles
+            if (!modelAvailability || !modelAvailability.onnxSupported) {
+                throw new Error('ONNX.js no está disponible');
+            }
+
+            // Obtener configuración
+            const compressionMode = document.getElementById('compression_mode').value;
+            const enhancementMode = document.getElementById('enhancement_mode').value;
+
+            // Determinar nivel de compresión
+            let compressionLevel;
+            if (compressionMode === 'auto') {
+                // Pasar 'auto' al procesador para que lo resuelva
+                compressionLevel = 'auto';
+            } else if (compressionMode === 'none') {
+                compressionLevel = 0;
+            } else {
+                compressionLevel = parseInt(compressionMode);
+            }
+
+            // Mostrar información apropiada según el modo
+            if (compressionLevel === 'auto') {
+                updateProcessingStep('Detectando condiciones de red...', 20);
+            } else {
+                updateProcessingStep(`Cargando modelo autoencoder ${compressionLevel}b...`, 20);
+            }
+
+            // Solo verificar disponibilidad si no es modo auto
+            if (compressionLevel !== 'auto' && compressionLevel > 0 && !modelAvailability.autoencoders[compressionLevel]) {
+                throw new Error(`Modelo autoencoder ${compressionLevel}b no disponible`);
+            }
+
+            updateProcessingStep('Ejecutando compresión con IA...', 40);
+
+            // Procesar imagen con ONNX
+            const enhanceWithESPCN = enhancementMode === 'espcn' && modelAvailability.espcn;
+            processedData = await onnxProcessor.processImageComplete(
+                currentFile,
+                compressionLevel,
+                enhanceWithESPCN
+            );
+
+            updateProcessingStep('Finalizando procesamiento...', 90);
+
+            // Mostrar resultado
+            const finalImage = processedData.enhanced || processedData.compressed;
+            document.getElementById('processedImage').src = finalImage.dataUrl;
+            document.getElementById('processedSize').textContent = formatFileSize(finalImage.blob.size);
+
+            // Actualizar información del modelo usado
+            const actualLevel = processedData.resolvedCompressionLevel || compressionLevel;
+            let modelInfo = `Autoencoder ${actualLevel}b`;
+            if (actualLevel === 0) modelInfo = 'Solo redimensionado';
+            if (processedData.wasAutoResolved) {
+                modelInfo += ' (auto-seleccionado)';
+            }
+
+            document.getElementById('modelUsed').textContent = modelInfo;
+
+            document.getElementById('processedInfo').textContent = `Modelo: ${modelInfo}`;
+            document.getElementById('compressionReduction').textContent =
+                `${((currentFile.size - finalImage.blob.size) / currentFile.size * 100).toFixed(1)}%`;
+
+            document.getElementById('espcnApplied').textContent =
+                processedData.enhanced ? 'Aplicada' : 'No aplicada';
+
+            // Preparar datos para envío
+            await prepareFormData();
+
+            updateProcessingStep('¡Completado!', 100);
+
+            setTimeout(() => {
+                showProcessingStatus(false);
+                submitBtn.disabled = false;
+                reprocessBtn.style.display = 'inline-flex';
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error procesando imagen con ONNX:', error);
+            showProcessingStatus(false);
+            alert('Error procesando imagen: ' + error.message + '\nVerifica que los modelos estén en /static/models/');
+        }
+    }
+
+    async function prepareFormData() {
+        if (!processedData) return;
+
+        // Convertir blobs a base64 para envío
+        const finalImage = processedData.enhanced || processedData.compressed;
+        const thumbnail = processedData.thumbnail;
+
+        const imageBase64 = await blobToBase64(finalImage.blob);
+        const thumbnailBase64 = await blobToBase64(thumbnail.blob);
+
+        // Guardar en campos ocultos
+        document.getElementById('processedImageData').value = imageBase64;
+        document.getElementById('thumbnailData').value = thumbnailBase64;
+
+        // Obtener el nivel de compresión original y resuelto
+        const originalCompressionMode = document.getElementById('compression_mode').value;
+        const resolvedCompressionLevel = processedData.resolvedCompressionLevel || finalImage.compressionLevel;
+
+        const metadata = {
+            originalSize: currentFile.size,
+            processedSize: finalImage.blob.size,
+            thumbnailSize: thumbnail.blob.size,
+            compressionLevel: resolvedCompressionLevel,
+            originalCompressionMode: originalCompressionMode,
+            wasAutoResolved: processedData.wasAutoResolved || false,
+            enhancement: document.getElementById('enhancement_mode').value,
+            processingMethod: 'onnx_client',
+            modelUsed: finalImage.method,
+            espcnApplied: !!processedData.enhanced
+        };
+
+        document.getElementById('processingMetadata').value = JSON.stringify(metadata);
+    }
+
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    function showProcessingStatus(show) {
+        processingStatus.style.display = show ? 'block' : 'none';
+        if (!show) {
+            document.getElementById('progressBar').style.width = '0%';
+        }
+    }
+
+    function updateProcessingStep(step, progress) {
+        document.getElementById('processingStep').textContent = step;
+        document.getElementById('progressBar').style.width = progress + '%';
+    }
+
+    async function reprocessImage() {
+        if (currentFile) {
+            submitBtn.disabled = true;
+            reprocessBtn.style.display = 'none';
+            await processImageWithONNX();
+        }
+    }
+
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+
+        if (!processedData) {
+            alert('Por favor espera a que termine el procesamiento');
+            return;
+        }
+
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+        submitBtn.disabled = true;
+
+        // Enviar formulario con datos procesados
+        const formData = new FormData();
+        formData.append('title', document.getElementById('title').value);
+        formData.append('subreddit', document.getElementById('subreddit').value);
+        formData.append('username', document.getElementById('username').value);
+        formData.append('processed_image_data', document.getElementById('processedImageData').value);
+        formData.append('thumbnail_data', document.getElementById('thumbnailData').value);
+        formData.append('processing_metadata', document.getElementById('processingMetadata').value);
+
+        try {
+            const response = await fetch('/submit_processed', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                throw new Error('Error en el servidor');
+            }
+        } catch (error) {
+            console.error('Error subiendo:', error);
+            alert('Error subiendo imagen: ' + error.message);
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Publicar Imagen';
+            submitBtn.disabled = false;
+        }
+    }
+
+    function updateCompressionInfo() {
+        // Reprocesar si hay una imagen cargada
+        if (currentFile && processedData) {
+            reprocessImage();
+        }
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+</script>
+{% endblock %}

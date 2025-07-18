@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - Dyzen{% endblock %}
+
+{% block content %}
+<div class="post-page">
+    <!-- Post Content -->
+    <article class="post-detail">
+        <!-- Post Header -->
+        <div class="post-header">
+            <div class="post-meta">
+                <span class="subreddit">r/{{ post.subreddit }}</span>
+                <span class="separator">•</span>
+                <span class="username">u/{{ post.username }}</span>
+                <span class="separator">•</span>
+                <span class="timestamp">{{ post.created_at }}</span>
+            </div>
+            <div class="compression-info">
+                <span class="compression-badge">
+                    <i class="fas fa-compress-alt"></i>
+                    {% if post.compression_level == 0 %}
+                        Sin compresión
+                    {% elif post.compression_level == 8 %}
+                        Alta compresión
+                    {% elif post.compression_level == 16 %}
+                        Media compresión
+                    {% elif post.compression_level == 32 %}
+                        Baja compresión
+                    {% else %}
+                        {{ post.compression_level }}b
+                    {% endif %}
+                </span>
+                <span class="size-info">
+                    {% if post.compression_level == 0 %}
+                        {{ "%.1f"|format(post.original_size/1024/1024) }}MB (Original)
+                    {% else %}
+                        {{ "%.1f"|format(post.original_size/1024/1024) }}MB → 
+                        {{ "%.1f"|format(post.compressed_size/1024/1024) }}MB
+                        ({{ "%.0f"|format((1 - post.compressed_size/post.original_size) * 100) }}% reducción)
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Post Title -->
+        <h1 class="post-title">{{ post.title }}</h1>
+
+        <!-- Post Image -->
+        <div class="post-image-container">
+            <img src="{{ url_for('static', filename=post.compressed_path.replace('static/', '').replace('\\', '/')) }}" 
+                 alt="{{ post.title }}" class="post-image" id="postImage">
+            
+            <!-- Image Controls -->
+            <div class="image-controls">
+                <button class="control-btn" onclick="toggleImageQuality()" id="qualityToggle">
+                    <i class="fas fa-magic"></i>
+                    Mejorar con ESPCN
+                </button>
+                <button class="control-btn" onclick="downloadImage()">
+                    <i class="fas fa-download"></i>
+                    Descargar
+                </button>
+                <button class="control-btn" onclick="toggleFullscreen()">
+                    <i class="fas fa-expand"></i>
+                    Pantalla Completa
+                </button>
+            </div>
+        </div>
+
+        <!-- Post Actions -->
+        <div class="post-actions">
+            <div class="vote-section">
+                <!-- <button class="vote-btn upvote" onclick="vote({{ post.id }}, 'up', 'post')">
+                    <i class="fas fa-arrow-up"></i>
+                    <span class="vote-count upvote-count">{{ post.upvotes }}</span>
+                </button>
+                <button class="vote-btn downvote" onclick="vote({{ post.id }}, 'down', 'post')">
+                    <i class="fas fa-arrow-down"></i>
+                    <span class="vote-count downvote-count">{{ post.downvotes }}</span>
+                </button> -->
+            </div>
+
+            <div class="action-buttons">
+                <!-- Botones de acción -->
+            </div>
+        </div>
+    </article>
+
+    <!-- Comments Section -->
+    <section class="comments-section">
+        <div class="comments-header">
+            <h3><i class="fas fa-comments"></i> Comentarios ({{ comments|length }})</h3>
+        </div>
+
+        <!-- Add Comment Form -->
+        <div class="add-comment">
+            <form class="comment-form" id="commentForm">
+                <div class="form-group">
+                    <input type="text" id="commentUsername" placeholder="Nombre de usuario" value="Anónimo">
+                </div>
+                <div class="form-group">
+                    <textarea id="commentContent" placeholder="Escribe tu comentario..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i>
+                    Comentar
+                </button>
+            </form>
+        </div>
+
+        <!-- Comments List -->
+        <div class="comments-list" id="commentsList">
+            {% for comment in comments %}
+            <div class="comment" data-comment-id="{{ comment.id }}">
+                <div class="comment-header">
+                    <span class="comment-username">u/{{ comment.username }}</span>
+                    <span class="comment-timestamp">{{ comment.created_at }}</span>
+                </div>
+                <div class="comment-content">{{ comment.content }}</div>
+                <div class="comment-actions">
+                    <button class="vote-btn upvote" onclick="vote(null, 'up', 'comment', {{ comment.id }})">
+                        <i class="fas fa-arrow-up"></i>
+                        <span class="vote-count upvote-count">{{ comment.upvotes }}</span>
+                    </button>
+                    <button class="vote-btn downvote" onclick="vote(null, 'down', 'comment', {{ comment.id }})">
+                        <i class="fas fa-arrow-down"></i>
+                        <span class="vote-count downvote-count">{{ comment.downvotes }}</span>
+                    </button>
+                    <!-- <button class="action-btn reply-btn">
+                        <i class="fas fa-reply"></i>
+                        Responder
+                    </button> -->
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Cargar ONNX.js para procesamiento del cliente -->
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort.min.js"></script>
+<script src="{{ url_for('static', filename='js/onnx_image_processor.js') }}"></script>
+<script>
+let isEnhanced = false;
+let originalImageSrc = null;
+let enhancedImageSrc = null;
+
+// Metadatos del post
+const postMetadata = {{ post.metadata | tojson | safe }};
+
+// Manejo de comentarios
+document.getElementById('commentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const username = document.getElementById('commentUsername').value;
+    const content = document.getElementById('commentContent').value;
+    
+    if (!content.trim()) return;
+    
+    try {
+        const response = await fetch('/api/comment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                post_id: {{ post.id }},
+                username: username,
+                content: content
+            })
+        });
+        
+        if (response.ok) {
+            location.reload(); // Recargar para mostrar nuevo comentario
+        }
+    } catch (error) {
+        console.error('Error al agregar comentario:', error);
+    }
+});
+
+// Mejorar calidad de imagen con ESPCN en el servidor
+async function toggleImageQuality() {
+    const btn = document.getElementById('qualityToggle');
+    const img = document.getElementById('postImage');
+    
+    if (!isEnhanced) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch(`/api/enhance/{{ post.id }}`, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) throw new Error(await response.text());
+            
+            const data = await response.json();
+            
+            if (data.enhanced_path) {
+                enhancedImageSrc = `/static/${data.enhanced_path}`;
+                showEnhancedVersion();
+                showNotification('Imagen mejorada en el servidor', 'success');
+            }
+            
+        } catch (error) {
+            console.error('Error mejorando imagen:', error);
+            showNotification('Error al mejorar imagen: ' + error.message, 'error');
+            btn.innerHTML = '<i class="fas fa-magic"></i> Mejorar calidad';
+        }
+        btn.disabled = false;
+    } else {
+        revertToOriginal();
+    }
+}
+
+// Mostrar versión mejorada
+function showEnhancedVersion() {
+    const img = document.getElementById('postImage');
+    const btn = document.getElementById('qualityToggle');
+    
+    if (enhancedImageSrc) {
+        img.src = enhancedImageSrc;
+        isEnhanced = true;
+        
+        btn.innerHTML = '<i class="fas fa-undo"></i> Imagen Original';
+        btn.classList.add('enhanced');
+        btn.disabled = false;
+        
+        // Cambiar la función del botón para revertir
+        btn.onclick = revertToOriginal;
+    }
+}
+
+// Revertir a imagen original
+function revertToOriginal() {
+    const img = document.getElementById('postImage');
+    const btn = document.getElementById('qualityToggle');
+    
+    if (originalImageSrc) {
+        img.src = originalImageSrc;
+        isEnhanced = false;
+        
+        btn.innerHTML = '<i class="fas fa-magic"></i> Ver versión mejorada';
+        btn.classList.remove('enhanced');
+        btn.disabled = false;
+        
+        // Cambiar la función del botón para mejorar
+        btn.onclick = toggleImageQuality;
+        
+        showNotification('Mostrando imagen original', 'info');
+    }
+}
+
+// Función de notificación
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    
+    const colors = {
+        success: '#00d4aa',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#0079d3'
+    };
+    
+    notification.style.background = colors[type] || colors.info;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Descargar imagen
+function downloadImage() {
+    const img = document.getElementById('postImage');
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = '{{ post.title }}.jpg';
+    link.click();
+}
+
+// Pantalla completa
+function toggleFullscreen() {
+    const img = document.getElementById('postImage');
+    if (img.requestFullscreen) {
+        img.requestFullscreen();
+    }
+}
+
+// Verificar si ya hay una imagen mejorada guardada al cargar la página
+document.addEventListener('DOMContentLoaded', async () => {
+    const img = document.getElementById('postImage');
+    const btn = document.getElementById('qualityToggle');
+    
+    // Guardar la imagen original
+    originalImageSrc = img.src;
+    
+    // Verificar si ya existe una versión mejorada
+    if (postMetadata && postMetadata.espcn_enhanced_path) {
+        hasStoredEnhancement = true;
+        
+        // Construir la URL correcta para la imagen mejorada
+        let enhancedPath = postMetadata.espcn_enhanced_path;
+        if (enhancedPath.startsWith('static/')) {
+            enhancedPath = enhancedPath.replace('static/', '');
+        }
+        
+        // Verificar que la imagen existe antes de usarla
+        try {
+            const testResponse = await fetch(`/static/${enhancedPath}`, { method: 'HEAD' });
+            if (testResponse.ok) {
+                enhancedImageSrc = `/static/${enhancedPath}`;
+                btn.innerHTML = '<i class="fas fa-magic"></i> Ver versión mejorada';
+                console.log('Versión mejorada disponible:', enhancedImageSrc);
+            } else {
+                console.warn('Imagen mejorada no encontrada:', enhancedPath);
+                hasStoredEnhancement = false;
+            }
+        } catch (error) {
+            console.warn('Error verificando imagen mejorada:', error);
+            hasStoredEnhancement = false;
+        }
+    }
+});
+</script>
+{% endblock %}
